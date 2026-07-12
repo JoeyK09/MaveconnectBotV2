@@ -1,8 +1,0 @@
-pyTelegramBotAPI==4.28.0
-requests
-flask
-psycopg2-binary
-pandas
-ta
-numpy
-feedparser
