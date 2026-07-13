@@ -47,7 +47,7 @@ from urllib.parse import parse_qsl
 
 from telebot import types
 
-GAME_URL = "https://joeyk09.github.io/kamikaze.html"  # <-- update this
+GAME_URL = "https://joeyk09.github.io/MaveconnectbotV2/kamikaze.html"  # <-- update this
 PUBLIC_BASE_URL = "https://maveconnectbotv2.onrender.com"        # <-- update this (no trailing slash)
 
 _API_BASE = f"{PUBLIC_BASE_URL}/kamikaze"
