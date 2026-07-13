@@ -187,9 +187,10 @@ register_game_handlers(bot)
 register_staking_handlers(bot)
 register_prediction_handlers(bot)
 register_collectible_handlers(bot)
-register_kamikaze_handlers(bot, app, get_balance, add_plats, remove_plats)
+
 
 app = Flask(__name__)
+register_kamikaze_handlers(bot, app, get_balance, add_plats, remove_plats)
 
 # ================= GROUPS =================
 
