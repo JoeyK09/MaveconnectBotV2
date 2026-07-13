@@ -5,6 +5,7 @@ import requests
 import feedparser
 from keyboards import main_menu
 from games_keyboard import games_menu
+from kamikaze_game import register_kamikaze_handlers
 from games import register_game_handlers
 from staking import register_staking_handlers
 from predictions import register_prediction_handlers
@@ -186,7 +187,7 @@ register_game_handlers(bot)
 register_staking_handlers(bot)
 register_prediction_handlers(bot)
 register_collectible_handlers(bot)
-from kamikaze_game import register_kamikaze_handlers
+register_kamikaze_handlers(bot, app, get_balance, add_plats, remove_plats)
 
 app = Flask(__name__)
 
