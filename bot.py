@@ -186,6 +186,7 @@ register_game_handlers(bot)
 register_staking_handlers(bot)
 register_prediction_handlers(bot)
 register_collectible_handlers(bot)
+from kamikaze_game import register_kamikaze_handlers
 
 app = Flask(__name__)
 
