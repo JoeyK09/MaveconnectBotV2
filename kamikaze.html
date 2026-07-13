@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Kamikaze — MaveConnect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --void:#0a0c0d;
+    --void-2:#101416;
+    --alert:#e8432f;
+    --alert-glow:#ff6a4d;
+    --amber:#ffb627;
+    --steel:#232d31;
+    --steel-line:#3d4d53;
+    --fog:#eceae4;
+    --fog-dim:#8fa0a6;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%; overflow:hidden;
+    background:var(--void); color:var(--fog);
+    font-family:'Share Tech Mono', monospace;
+    touch-action:none;
+  }
+  #wrap{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:var(--void);}
+  canvas{display:block; background:radial-gradient(120% 100% at 50% 0%, #131a1d 0%, #0a0c0d 70%);}
+
+  .display{font-family:'Black Ops One', sans-serif;}
+
+  #hud{
+    position:absolute; top:0; left:0; right:0;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    padding:14px 16px; pointer-events:none;
+    z-index:5;
+  }
+  .hud-block{
+    background:rgba(16,20,22,0.72);
+    border:1px solid var(--steel-line);
+    padding:6px 12px;
+    display:flex; align-items:center; gap:8px;
+    letter-spacing:1px;
+    backdrop-filter:blur(2px);
+  }
+  .hud-label{color:var(--fog-dim); font-size:11px;}
+  .hud-val{font-size:18px; color:var(--fog); font-weight:bold;}
+  .hud-val.amber{color:var(--amber);}
+  .lives{display:flex; gap:4px;}
+  .life-dot{width:9px; height:9px; background:var(--alert); clip-path:polygon(50% 0%, 100% 100%, 0% 100%); }
+  .life-dot.dead{background:#3a4245;}
+
+  #siren{
+    position:absolute; inset:0; pointer-events:none; z-index:4;
+    box-shadow: inset 0 0 0px 0px rgba(232,67,47,0);
+    transition: box-shadow 120ms linear;
+  }
+
+  .overlay{
+    position:absolute; inset:0; z-index:10;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(8,10,11,0.92);
+    text-align:center; padding:24px;
+  }
+  .overlay.hidden{display:none;}
+  .eyebrow{
+    color:var(--alert); letter-spacing:4px; font-size:12px; margin-bottom:6px;
+  }
+  h1.title{
+    font-size:42px; margin:0 0 6px 0; color:var(--fog);
+    text-shadow:0 0 18px rgba(232,67,47,0.55), 0 0 2px var(--alert);
+    letter-spacing:2px;
+  }
+  .sub{color:var(--fog-dim); font-size:13px; max-width:280px; line-height:1.6; margin-bottom:26px;}
+  .btn{
+    font-family:'Black Ops One', sans-serif;
+    background:var(--alert); color:#0a0c0d; border:none;
+    padding:14px 34px; font-size:16px; letter-spacing:1px;
+    cursor:pointer; clip-path:polygon(8% 0,100% 0,92% 100%,0% 100%);
+    box-shadow:0 0 22px rgba(232,67,47,0.45);
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn.secondary{
+    background:transparent; color:var(--fog); border:1px solid var(--steel-line);
+    box-shadow:none; margin-top:12px; clip-path:none; padding:10px 26px; font-size:12px;
+  }
+  .stat-row{display:flex; gap:24px; margin:18px 0 26px 0;}
+  .stat{text-align:center;}
+  .stat-num{font-size:30px; color:var(--amber); font-family:'Black Ops One',sans-serif;}
+  .stat-tag{font-size:10px; letter-spacing:2px; color:var(--fog-dim);}
+
+  #controls-hint{
+    position:absolute; bottom:14px; left:0; right:0;
+    text-align:center; color:var(--fog-dim); font-size:11px;
+    letter-spacing:1px; z-index:5; pointer-events:none;
+    opacity:0.8;
+  }
+</style>
+</head>
+<body>
+
+<div id="wrap">
+  <canvas id="game"></canvas>
+
+  <div id="siren"></div>
+
+  <div id="hud">
+    <div class="hud-block">
+      <span class="hud-label">SCORE</span>
+      <span class="hud-val" id="scoreVal">0</span>
+    </div>
+    <div class="hud-block">
+      <span class="hud-label">PLATS</span>
+      <span class="hud-val amber" id="platsVal">0</span>
+    </div>
+    <div class="hud-block">
+      <span class="lives" id="livesRow"></span>
+    </div>
+  </div>
+
+  <div id="controls-hint">DRAG TO STEER · TAP TO FIRE</div>
+
+  <div class="overlay" id="startScreen">
+    <div class="eyebrow">MAVECONNECT ARCADE</div>
+    <h1 class="title display">KAMIKAZE</h1>
+    <div class="sub">Drones are diving for your position. Steer clear, shoot them down, and grab every Plat that falls. Three hits and you're grounded.</div>
+    <button class="btn" id="startBtn">LAUNCH</button>
+  </div>
+
+  <div class="overlay hidden" id="overScreen">
+    <div class="eyebrow" id="overEyebrow">MISSION OVER</div>
+    <h1 class="title display">DOWNED</h1>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-num" id="finalScore">0</div>
+        <div class="stat-tag">SCORE</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="finalPlats">0</div>
+        <div class="stat-tag">PLATS EARNED</div>
+      </div>
+    </div>
+    <button class="btn" id="retryBtn">FLY AGAIN</button>
+    <button class="btn secondary" id="closeBtn">CLOSE</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Telegram Mini App bridge ----------
+  var tg = window.Telegram ? window.Telegram.WebApp : null;
+  if (tg){
+    tg.ready();
+    tg.expand();
+  }
+  var params = new URLSearchParams(window.location.search);
+  var scoreEndpoint = params.get('scoreEndpoint'); // set by the bot when building the launch URL
+
+  function submitScore(score, platsEarned){
+    if (!scoreEndpoint || !tg || !tg.initData){
+      return; // no verified session to attach — nothing safe to submit
+    }
+    fetch(scoreEndpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        initData: tg.initData,
+        score: score,
+        plats: platsEarned
+      })
+    }).catch(function(){});
+  }
+
+  // ---------- Canvas setup ----------
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  var W, H;
+
+  function resize(){
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------- Game state ----------
+  var STATE_START = 0, STATE_PLAY = 1, STATE_OVER = 2;
+  var state = STATE_START;
+
+  var player, bullets, enemies, coins, particles;
+  var score, plats, lives, spawnTimer, coinTimer, difficultyTimer, elapsed;
+  var shakeTime = 0, shakeMag = 0;
+  var sirenLevel = 0;
+
+  function resetGame(){
+    player = { x: W/2, y: H - 110, r: 16, speed: 0, targetX: W/2 };
+    bullets = [];
+    enemies = [];
+    coins = [];
+    particles = [];
+    score = 0;
+    plats = 0;
+    lives = 3;
+    spawnTimer = 0;
+    coinTimer = 0;
+    difficultyTimer = 0;
+    elapsed = 0;
+    sirenLevel = 0;
+    updateHud();
+    renderLives();
+  }
+
+  function updateHud(){
+    document.getElementById('scoreVal').textContent = score;
+    document.getElementById('platsVal').textContent = plats;
+  }
+
+  function renderLives(){
+    var row = document.getElementById('livesRow');
+    row.innerHTML = '';
+    for (var i=0;i<3;i++){
+      var d = document.createElement('div');
+      d.className = 'life-dot' + (i < lives ? '' : ' dead');
+      row.appendChild(d);
+    }
+  }
+
+  // ---------- Input ----------
+  var dragging = false;
+  var lastFireTime = 0;
+  var FIRE_COOLDOWN = 220;
+
+  function pointerX(e){
+    if (e.touches && e.touches.length) return e.touches[0].clientX;
+    return e.clientX;
+  }
+
+  canvas.addEventListener('pointerdown', function(e){
+    if (state !== STATE_PLAY) return;
+    dragging = true;
+    player.targetX = pointerX(e);
+    tryFire();
+  });
+  canvas.addEventListener('pointermove', function(e){
+    if (state !== STATE_PLAY || !dragging) return;
+    player.targetX = pointerX(e);
+  });
+  window.addEventListener('pointerup', function(){ dragging = false; });
+
+  function tryFire(){
+    var now = performance.now();
+    if (now - lastFireTime < FIRE_COOLDOWN) return;
+    lastFireTime = now;
+    bullets.push({ x: player.x, y: player.y - player.r, vy: -9 });
+  }
+
+  // auto-fire while holding down, for accessibility on long presses
+  setInterval(function(){
+    if (state === STATE_PLAY && dragging) tryFire();
+  }, FIRE_COOLDOWN);
+
+  // ---------- Spawning ----------
+  function spawnEnemy(){
+    var margin = 30;
+    var x = margin + Math.random() * (W - margin*2);
+    var kamikazeChance = Math.min(0.15 + elapsed/40000, 0.55);
+    var isKamikaze = Math.random() < kamikazeChance;
+    enemies.push({
+      x: x, y: -30, r: 14,
+      vy: 2.4 + Math.random()*1.4 + Math.min(elapsed/20000, 2.5),
+      isKamikaze: isKamikaze,
+      wobble: Math.random()*Math.PI*2
+    });
+  }
+
+  function spawnCoin(){
+    var margin = 24;
+    coins.push({
+      x: margin + Math.random()*(W-margin*2),
+      y: -20, r: 10,
+      vy: 2 + Math.random()*1.2,
+      spin: Math.random()*Math.PI*2
+    });
+  }
+
+  function spawnParticles(x,y,color,count){
+    for (var i=0;i<count;i++){
+      var ang = Math.random()*Math.PI*2;
+      var spd = 1 + Math.random()*3;
+      particles.push({
+        x:x, y:y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
+        life:1, color:color
+      });
+    }
+  }
+
+  // ---------- Update ----------
+  var lastTime = null;
+  function loop(ts){
+    if (lastTime === null) lastTime = ts;
+    var dt = Math.min(ts - lastTime, 40);
+    lastTime = ts;
+
+    if (state === STATE_PLAY) update(dt);
+    draw();
+
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    elapsed += dt;
+
+    // player easing toward target
+    player.x += (player.targetX - player.x) * 0.18;
+    player.x = Math.max(player.r+8, Math.min(W-player.r-8, player.x));
+
+    // spawn
+    spawnTimer -= dt;
+    var spawnInterval = Math.max(650 - elapsed/28, 260);
+    if (spawnTimer <= 0){
+      spawnEnemy();
+      spawnTimer = spawnInterval;
+    }
+    coinTimer -= dt;
+    if (coinTimer <= 0){
+      spawnCoin();
+      coinTimer = 900 + Math.random()*700;
+    }
+
+    // bullets
+    for (var i=bullets.length-1;i>=0;i--){
+      var b = bullets[i];
+      b.y += b.vy * (dt/16);
+      if (b.y < -20) bullets.splice(i,1);
+    }
+
+    // enemies
+    var closestDist = Infinity;
+    for (i=enemies.length-1;i>=0;i--){
+      var en = enemies[i];
+      en.wobble += 0.05;
+      if (en.isKamikaze){
+        var dx = player.x - en.x;
+        en.x += dx * 0.012 * (dt/16);
+      } else {
+        en.x += Math.sin(en.wobble) * 0.6;
+      }
+      en.y += en.vy * (dt/16);
+
+      var pd = Math.hypot(en.x-player.x, en.y-player.y);
+      if (pd < closestDist) closestDist = pd;
+
+      if (en.y > H + 30){
+        enemies.splice(i,1);
+        continue;
+      }
+      // collide with player
+      if (pd < en.r + player.r){
+        enemies.splice(i,1);
+        spawnParticles(en.x,en.y,'#e8432f',18);
+        hitPlayer();
+        continue;
+      }
+      // collide with bullets
+      for (var j=bullets.length-1;j>=0;j--){
+        var bl = bullets[j];
+        if (Math.hypot(bl.x-en.x, bl.y-en.y) < en.r+4){
+          enemies.splice(i,1);
+          bullets.splice(j,1);
+          spawnParticles(en.x,en.y,'#ffb627',14);
+          score += en.isKamikaze ? 25 : 15;
+          updateHud();
+          break;
+        }
+      }
+    }
+
+    // siren intensity based on closest kamikaze proximity
+    var target = closestDist < 160 ? Math.max(0, 1 - closestDist/160) : 0;
+    sirenLevel += (target - sirenLevel) * 0.15;
+    applySiren();
+
+    // coins
+    for (i=coins.length-1;i>=0;i--){
+      var c = coins[i];
+      c.y += c.vy * (dt/16);
+      c.spin += 0.08;
+      if (c.y > H+20){ coins.splice(i,1); continue; }
+      if (Math.hypot(c.x-player.x, c.y-player.y) < c.r+player.r){
+        coins.splice(i,1);
+        plats += 1;
+        score += 5;
+        spawnParticles(c.x,c.y,'#ffb627',10);
+        updateHud();
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+      }
+    }
+
+    // particles
+    for (i=particles.length-1;i>=0;i--){
+      var p = particles[i];
+      p.x += p.vx; p.y += p.vy; p.life -= 0.04;
+      if (p.life <= 0) particles.splice(i,1);
+    }
+
+    if (shakeTime > 0) shakeTime -= dt;
+  }
+
+  function applySiren(){
+    var siren = document.getElementById('siren');
+    var alpha = 0.15 + sirenLevel*0.5;
+    var spread = 40 + sirenLevel*90;
+    siren.style.boxShadow = sirenLevel > 0.03
+      ? 'inset 0 0 ' + spread + 'px ' + (6+sirenLevel*14) + 'px rgba(232,67,47,' + alpha.toFixed(2) + ')'
+      : 'inset 0 0 0px 0px rgba(232,67,47,0)';
+  }
+
+  function hitPlayer(){
+    lives -= 1;
+    renderLives();
+    shakeTime = 260; shakeMag = 10;
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+    if (lives <= 0){
+      endGame();
+    }
+  }
+
+  function endGame(){
+    state = STATE_OVER;
+    document.getElementById('finalScore').textContent = score;
+    document.getElementById('finalPlats').textContent = plats;
+    document.getElementById('overScreen').classList.remove('hidden');
+    submitScore(score, plats);
+  }
+
+  // ---------- Draw ----------
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+
+    var shakeX = 0, shakeY = 0;
+    if (shakeTime > 0){
+      shakeX = (Math.random()-0.5) * shakeMag;
+      shakeY = (Math.random()-0.5) * shakeMag;
+    }
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+
+    // starfield-ish scan lines for atmosphere
+    drawBackground();
+
+    // coins
+    coins.forEach(function(c){
+      ctx.save();
+      ctx.translate(c.x,c.y);
+      ctx.rotate(c.spin);
+      ctx.fillStyle = '#ffb627';
+      ctx.shadowColor = '#ffb627';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(0,0,c.r,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#0a0c0d';
+      ctx.font = 'bold 11px Share Tech Mono';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('P', 0, 1);
+      ctx.restore();
+    });
+
+    // enemies (kamikaze drones)
+    enemies.forEach(function(en){
+      ctx.save();
+      ctx.translate(en.x, en.y);
+      ctx.fillStyle = en.isKamikaze ? '#e8432f' : '#8fa0a6';
+      ctx.shadowColor = en.isKamikaze ? '#ff6a4d' : 'transparent';
+      ctx.shadowBlur = en.isKamikaze ? 14 : 0;
+      ctx.beginPath();
+      ctx.moveTo(0, -en.r);
+      ctx.lineTo(en.r, en.r*0.8);
+      ctx.lineTo(0, en.r*0.3);
+      ctx.lineTo(-en.r, en.r*0.8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    });
+
+    // bullets
+    ctx.fillStyle = '#ffe9b0';
+    ctx.shadowColor = '#ffb627';
+    ctx.shadowBlur = 8;
+    bullets.forEach(function(b){
+      ctx.fillRect(b.x-2, b.y-8, 4, 12);
+    });
+    ctx.shadowBlur = 0;
+
+    // player ship
+    if (state !== STATE_START){
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.fillStyle = '#eceae4';
+      ctx.beginPath();
+      ctx.moveTo(0,-player.r);
+      ctx.lineTo(player.r*0.85, player.r);
+      ctx.lineTo(0, player.r*0.4);
+      ctx.lineTo(-player.r*0.85, player.r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#e8432f';
+      ctx.beginPath();
+      ctx.arc(0,-2,3,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // particles
+    particles.forEach(function(p){
+      ctx.globalAlpha = Math.max(p.life,0);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x-2,p.y-2,4,4);
+      ctx.globalAlpha = 1;
+    });
+
+    ctx.restore();
+  }
+
+  function drawBackground(){
+    ctx.strokeStyle = 'rgba(61,77,83,0.18)';
+    ctx.lineWidth = 1;
+    var offset = (elapsed/20) % 40;
+    for (var y = -40+offset; y < H; y += 40){
+      ctx.beginPath();
+      ctx.moveTo(0,y);
+      ctx.lineTo(W,y);
+      ctx.stroke();
+    }
+  }
+
+  // ---------- Screen flow ----------
+  document.getElementById('startBtn').addEventListener('click', function(){
+    document.getElementById('startScreen').classList.add('hidden');
+    resetGame();
+    state = STATE_PLAY;
+  });
+  document.getElementById('retryBtn').addEventListener('click', function(){
+    document.getElementById('overScreen').classList.add('hidden');
+    resetGame();
+    state = STATE_PLAY;
+  });
+  document.getElementById('closeBtn').addEventListener('click', function(){
+    if (tg && typeof tg.close === 'function'){
+      tg.close();
+    }
+  });
+
+  resetGame();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
