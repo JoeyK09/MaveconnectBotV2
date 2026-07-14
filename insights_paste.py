@@ -1,7 +1,7 @@
 # ============ PASTE 1: near your other constants (e.g. right after VIP_GROUP / FREE_GROUP) ============
 
-VIP_GROUP_ID = 0    # <-- replace with your real VIP group's numeric chat ID (looks like -1001234567890)
-FREE_GROUP_ID = 0   # <-- replace with your real Free group's numeric chat ID
+VIP_GROUP_ID = 1784057679   # <-- replace with your real VIP group's numeric chat ID (looks like -1001234567890)
+FREE_GROUP_ID = 1784057650  # <-- replace with your real Free group's numeric chat ID
 
 # Coins to consider each cycle when picking "most active" — extend freely,
 # but every symbol here must already exist in COINPAPRIKA_IDS above.
