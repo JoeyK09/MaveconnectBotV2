@@ -45,7 +45,8 @@ def main_menu():
     )
 
     markup.row(
-        KeyboardButton("🤝 Partners")
+        KeyboardButton("🤝 Partners"),
+        KeyboardButton("🎁 USDT Airdrop")
     )
 
     return markup
